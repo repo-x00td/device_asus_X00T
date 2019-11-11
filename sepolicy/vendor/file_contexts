@@ -32,3 +32,6 @@
 
 # Thermal
 /sys/devices/soc/780000.qcom,msm-core/uio/uio1(/.*)?                    u:object_r:sysfs_uio_file:s0
+
+# Gestures
+/sys/kernel/touchpanel/dclicknode                                       u:object_r:sysfs:s0
