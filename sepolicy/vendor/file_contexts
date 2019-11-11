@@ -32,6 +32,3 @@
 
 # Thermal
 /sys/devices/soc/780000.qcom,msm-core/uio/uio1(/.*)?                    u:object_r:sysfs_uio_file:s0
-
-# Touch HAL
-/(vendor|system/vendor)/bin/hw/vendor\.lineage\.touch@1\.0-service    u:object_r:hal_lineage_touch_default_exec:s0
