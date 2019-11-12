@@ -16,6 +16,9 @@
 /data/system/cdfinger(/.*)?                                             u:object_r:cdfinger_data_file:s0
 /(vendor|system/vendor)/bin/hw/android\.hardware\.biometrics\.fingerprint@2\.1-service-X00T u:object_r:hal_fingerprint_default_exec:s0
 
+# Gestures
+/sys/kernel/touchpanel/dclicknode                                       u:object_r:sysfs:s0
+
 # Lights HAL
 /(vendor|system/vendor)/bin/hw/android\.hardware\.light@2\.0-service\.X00T    u:object_r:hal_light_default_exec:s0
 
@@ -31,3 +34,4 @@
 
 # Thermal
 /sys/devices/soc/780000.qcom,msm-core/uio/uio1(/.*)?                    u:object_r:sysfs_uio_file:s0
+
