@@ -13,15 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#define LOG_TAG "android.hardware.biometrics.fingerprint@2.1-service-X00T"
-#define LOG_VERBOSE "android.hardware.biometrics.fingerprint@2.1-service-X00T"
+#define LOG_TAG "android.hardware.biometrics.fingerprint@2.1-service"
+#define LOG_VERBOSE "android.hardware.biometrics.fingerprint@2.1-service"
 
 #include <hardware/hw_auth_token.h>
 
 #include <hardware/hardware.h>
 #include <hardware/fingerprint.h>
 #include "BiometricsFingerprint.h"
-#include <cutils/properties.h>
 
 #include <inttypes.h>
 #include <unistd.h>
@@ -214,91 +213,48 @@ IBiometricsFingerprint* BiometricsFingerprint::getInstance() {
 
 fingerprint_device_t* BiometricsFingerprint::openHal() {
     int err;
-    const char *fp_id, *fp_vendor;
     const hw_module_t *hw_mdl = nullptr;
+    ALOGD("Opening fingerprint hal library...");
+    if (0 != (err = hw_get_module(FINGERPRINT_HARDWARE_MODULE_ID, &hw_mdl))) {
+        ALOGE("Can't open fingerprint HW Module, error: %d", err);
+        return nullptr;
+    }
+
+    if (hw_mdl == nullptr) {
+        ALOGE("No valid fingerprint module");
+        return nullptr;
+    }
+
+    fingerprint_module_t const *module =
+        reinterpret_cast<const fingerprint_module_t*>(hw_mdl);
+    if (module->common.methods->open == nullptr) {
+        ALOGE("No valid open method");
+        return nullptr;
+    }
 
     hw_device_t *device = nullptr;
-    fingerprint_module_t const *module = nullptr;
-    fingerprint_device_t* fp_device = nullptr;
-
-    ALOGD("Opening fingerprint hal library...");
-    fp_id = "fingerprint";
-    fp_vendor = "goodix";
-
-    if (0 != (err = hw_get_module(fp_id, &hw_mdl))) {
-        ALOGE("Can't open fingerprint HW Module, error: %d", err);
-        goto cd_fp;
-    }
-
-    if (hw_mdl == nullptr) {
-        ALOGE("No valid fingerprint module");
-        goto cd_fp;
-    }
-
-    module = reinterpret_cast<const fingerprint_module_t*>(hw_mdl);
-    if (module->common.methods->open == nullptr) {
-        ALOGE("No valid open method");
-        goto cd_fp;
-    }
-
-    device = nullptr;
 
     if (0 != (err = module->common.methods->open(hw_mdl, nullptr, &device))) {
         ALOGE("Can't open fingerprint methods, error: %d", err);
-        goto cd_fp;
+        return nullptr;
     }
-    goto init_ok;
-
-cd_fp:
-    fp_id = "cdfinger.fingerprint";
-    fp_vendor = "cdfinger";
-
-    if (0 != (err = hw_get_module(fp_id, &hw_mdl))) {
-        ALOGE("Can't open fingerprint HW Module, error: %d", err);
-        goto init_err;
-    }
-
-    if (hw_mdl == nullptr) {
-        ALOGE("No valid fingerprint module");
-        goto init_err;
-    }
-
-    module = reinterpret_cast<const fingerprint_module_t*>(hw_mdl);
-    if (module->common.methods->open == nullptr) {
-        ALOGE("No valid open method");
-        goto init_err;
-    }
-
-    device = nullptr;
-
-    if (0 != (err = module->common.methods->open(hw_mdl, nullptr, &device))) {
-        ALOGE("Can't open fingerprint methods, error: %d", err);
-        goto init_err;
-    }
-
-init_ok:
-    ALOGD("%s module is working", fp_vendor);
-    property_set("persist.vendor.runin.fp", fp_vendor);
 
     if (kVersion != device->version) {
         // enforce version on new devices because of HIDL@2.1 translation layer
         ALOGE("Wrong fp version. Expected %d, got %d", kVersion, device->version);
-        goto init_err;
+        return nullptr;
     }
 
-    fp_device = reinterpret_cast<fingerprint_device_t*>(device);
+    fingerprint_device_t* fp_device =
+        reinterpret_cast<fingerprint_device_t*>(device);
 
     if (0 != (err =
             fp_device->set_notify(fp_device, BiometricsFingerprint::notify))) {
         ALOGE("Can't register fingerprint module callback, error: %d", err);
-        goto init_err;
+        return nullptr;
     }
 
     return fp_device;
-
-init_err:
-    property_set("persist.vendor.runin.fp", "unkown");
-    return nullptr;
 }
 
 void BiometricsFingerprint::notify(const fingerprint_msg_t *msg) {
